@@ -1,0 +1,5 @@
+# Keep the official chart's default runner command and pod layout.
+minRunners: 0
+maxRunners: 3
+githubConfigUrl: https://github.com/kuring/arc-test
+githubConfigSecret: arc-auth

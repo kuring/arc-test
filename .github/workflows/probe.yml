@@ -1,0 +1,45 @@
+name: ARC probe
+run-name: arc-test-${{ inputs.batch }}
+on:
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: Unique test batch ID
+        required: true
+      scale_set:
+        description: Exact runner scale set name shown by make status
+        required: true
+      count:
+        description: Number of jobs (1-3)
+        required: true
+        default: '3'
+        type: choice
+        options: ['1', '2', '3']
+      seconds:
+        description: Job duration in seconds (1-600)
+        required: true
+        default: '10'
+permissions:
+  contents: read
+jobs:
+  probe:
+    name: probe-${{ matrix.slot }}
+    runs-on: ${{ inputs.scale_set }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: ${{ fromJSON(inputs.count == '1' && '[1]' || inputs.count == '2' && '[1,2]' || '[1,2,3]') }}
+    steps:
+      - name: Execute on the official runner
+        env:
+          DURATION: ${{ inputs.seconds }}
+          BATCH: ${{ inputs.batch }}
+          SLOT: ${{ matrix.slot }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DURATION" =~ ^[0-9]{1,3}$ ]] && (( DURATION >= 1 && DURATION <= 600 ))
+          printf 'start=%s batch=%s slot=%s runner=%s\n' "$(date -u +%FT%TZ)" "$BATCH" "$SLOT" "$RUNNER_NAME"
+          sleep "$DURATION"
+          printf 'end=%s runner=%s\n' "$(date -u +%FT%TZ)" "$RUNNER_NAME"
