@@ -1,0 +1,41 @@
+name: Reusable cancellation example
+run-name: reusable-cancel-${{ github.sha }}
+on:
+  push:
+    branches: [codex/reusable-cancellation-example]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      osdc: ${{ steps.change.outputs.osdc }}
+    steps:
+      - id: change
+        run: echo 'osdc=true' >> "$GITHUB_OUTPUT"
+  deploy-fast:
+    needs: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - run: echo 'Simulated deployment succeeded; no cluster is accessed.'
+  caller-default:
+    needs: [changes, deploy-fast]
+    if: needs.changes.outputs.osdc == 'true' && needs.deploy-fast.result == 'success'
+    uses: ./.github/workflows/_cancellation-example.yml
+    with:
+      protect_job: true
+  caller-always:
+    needs: [changes, deploy-fast]
+    if: ${{ always() && needs.changes.outputs.osdc == 'true' && needs.deploy-fast.result == 'success' }}
+    uses: ./.github/workflows/_cancellation-example.yml
+    with:
+      protect_job: true
+  caller-control:
+    needs: [changes, deploy-fast]
+    if: needs.changes.outputs.osdc == 'true' && needs.deploy-fast.result == 'success'
+    uses: ./.github/workflows/_cancellation-example.yml
+    with:
+      protect_job: false

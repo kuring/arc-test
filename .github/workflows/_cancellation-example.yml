@@ -1,0 +1,56 @@
+name: Reusable cancellation example child
+on:
+  workflow_call:
+    inputs:
+      protect_job:
+        required: true
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  protected:
+    if: ${{ always() && inputs.protect_job }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Hold simulated drained state
+        id: test
+        if: ${{ success() && !cancelled() }}
+        run: |
+          trap 'echo "TEST_INTERRUPTED $(date -u +%FT%TZ)"; exit 130' INT TERM
+          echo drained > "$RUNNER_TEMP/cancellation-example-state"
+          echo "TEST_READY $(date -u +%FT%TZ)"
+          sleep 600 &
+          wait "$!"
+      - name: Recover simulated state for 330 seconds
+        if: ${{ always() && steps.test.outcome != 'skipped' }}
+        timeout-minutes: 7
+        run: |
+          echo "RECOVERY_STARTED $(date -u +%FT%TZ)"
+          sleep 330
+          echo restored > "$RUNNER_TEMP/cancellation-example-state"
+          echo "RECOVERY_FINISHED $(date -u +%FT%TZ)"
+          cat "$RUNNER_TEMP/cancellation-example-state"
+  control:
+    if: ${{ !inputs.protect_job }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Hold simulated drained state
+        id: test
+        if: ${{ success() && !cancelled() }}
+        run: |
+          trap 'echo "TEST_INTERRUPTED $(date -u +%FT%TZ)"; exit 130' INT TERM
+          echo drained > "$RUNNER_TEMP/cancellation-example-state"
+          echo "TEST_READY $(date -u +%FT%TZ)"
+          sleep 600 &
+          wait "$!"
+      - name: Recover simulated state for 330 seconds
+        if: ${{ always() && steps.test.outcome != 'skipped' }}
+        timeout-minutes: 7
+        run: |
+          echo "RECOVERY_STARTED $(date -u +%FT%TZ)"
+          sleep 330
+          echo restored > "$RUNNER_TEMP/cancellation-example-state"
+          echo "RECOVERY_FINISHED $(date -u +%FT%TZ)"
+          cat "$RUNNER_TEMP/cancellation-example-state"
